@@ -14,6 +14,23 @@ jobs:
     name: Backend CI
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: employee_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/employee_db
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,11 +45,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Check Python syntax
-        working-directory: backend
+      
+      - name: Create test database
         run: |
-          python -m compileall .
+          mysql -h 127.0.0.1 -P 3306 -u root -proot \
+            -e "CREATE DATABASE IF NOT EXISTS employee_test_db;"
+
+      - name: Run pytest
+        working-directory: backend
+        run: pytest
 
   frontend:
     name: Frontend CI
